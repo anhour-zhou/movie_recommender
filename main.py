@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import numpy as np
 import pickle
@@ -8,6 +9,15 @@ TMDB_API_KEY = "b0ba8a42cf757ef8505822852f799df6"
 
 @st.cache_data(show_spinner=False)
 def load_data():
+    if not os.path.exists("movie_dict.pkl"):
+        raise FileNotFoundError("movie_dict.pkl not found in the app directory.")
+
+    # ✅ If using Git LFS, similarity.pkl must be present (not a pointer file)
+    if not os.path.exists("similarity.pkl"):
+        raise FileNotFoundError(
+            "similarity.pkl not found. If you used Git LFS, make sure Streamlit Cloud pulled LFS files."
+        )
+
     movies_dict = pickle.load(open("movie_dict.pkl", "rb"))
     similarity_loaded = pickle.load(open("similarity.pkl", "rb"))
 
@@ -17,7 +27,6 @@ def load_data():
 
     similarity = np.array(similarity_loaded, dtype=np.float32)
 
-    # ✅ HARD CHECK: similarity must be NxN matching movies length
     n = len(movies)
     if similarity.ndim != 2 or similarity.shape != (n, n):
         raise ValueError(
@@ -26,6 +35,7 @@ def load_data():
         )
 
     return movies, similarity
+
 
 def fetch_movie_poster(movie_id: int) -> str:
     url = f"https://api.themoviedb.org/3/movie/{movie_id}"
@@ -38,6 +48,7 @@ def fetch_movie_poster(movie_id: int) -> str:
         return "https://image.tmdb.org/t/p/w500" + poster_path
     except Exception:
         return "https://via.placeholder.com/500x750?text=No+Poster"
+
 
 def recommend(movie_index: int, movies: pd.DataFrame, similarity: np.ndarray, top_n: int = 5):
     distances = similarity[movie_index]
@@ -58,6 +69,7 @@ def recommend(movie_index: int, movies: pd.DataFrame, similarity: np.ndarray, to
 
     return names, posters
 
+
 # -------------------- UI --------------------
 st.set_page_config(page_title="Movie Recommender", layout="wide")
 st.title("🎬 Movie Recommender")
@@ -73,11 +85,11 @@ selected_movie_idx = st.selectbox(
 if st.button("Recommend"):
     names, posters = recommend(selected_movie_idx, movies, similarity, top_n=5)
 
-    cols = st.columns(5)  # ✅ always 5 columns
+    cols = st.columns(5)
     for i in range(5):
         with cols[i]:
             st.markdown(
-    f"<p style='text-align:center; font-size:16px; font-weight:600;'>{names[i]}</p>",
-    unsafe_allow_html=True
-)
+                f"<p style='text-align:center; font-size:16px; font-weight:600;'>{names[i]}</p>",
+                unsafe_allow_html=True
+            )
             st.image(posters[i], use_container_width=True)

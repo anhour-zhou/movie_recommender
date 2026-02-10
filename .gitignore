@@ -16,4 +16,4 @@ venv/
 .env
 
 # Streamlit cache
-.streamlit/cache/
+.streamlit/cache/similarity.pkl
